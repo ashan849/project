@@ -1,62 +1,67 @@
-# Proyecto de Plan de Pastoreo - Metodología y Flujo de Trabajo
+# Grazing Plan Project - Methodology and Workflow
 
-Este documento detalla el proceso técnico, los parámetros y la metodología utilizados para el desarrollo del plan de pastoreo.
+This document provides a detailed overview of the technical process, parameters, assumptions, and logic used to develop the grazing plan.
 
-## 1. Resumen del Proyecto
-El objetivo es subdividir una finca de **4.21 hectáreas** en **3 secciones de pastoreo** (C1, C2, C3), realizando un análisis geoespacial completo que incluya topografía, vegetación y accesibilidad al agua.
+## 1. Project Summary
+The objective was to subdivide a **4.21-hectare** farm into **3 grazing sections** (C1, C2, C3) and perform a comprehensive GIS analysis including terrain, vegetation dynamics, and water accessibility to support professional grazing calculations.
 
-## 2. Flujo de Trabajo (Workflow)
+## 2. Technical Workflow
 
-### Paso 1: Reconstrucción del Límite de la Finca
-- **Fuente:** Imagen de referencia `farm_boundary_current.png`.
-- **Proceso:** Se digitalizaron los vértices y se ajustó la geometría para obtener una superficie exacta de **42,127 m²**.
-- **Sistema de Coordenadas:** EPSG:25830 (UTM Zona 30N).
+### Step 1: Boundary Reconstruction
+- **Source:** Reference image `farm_boundary_current.png`.
+- **Process:** Vertices were digitized and the resulting geometry was scaled to match the client's specified area of **42,127 m²**.
+- **Coordinate Reference System (CRS):** EPSG:25830 (UTM Zone 30N).
 
-### Paso 2: Análisis de Terreno (DEM y Pendiente)
-- **Fuente de Datos:** Copernicus GLO-30 DEM (vía Microsoft Planetary Computer).
-- **Procesamiento:**
-  - Reproyección a EPSG:25830.
-  - Remuestreo a resolución de **2 metros**.
-  - Cálculo de pendiente (Slope) en grados utilizando algoritmos de gradiente.
+### Step 2: Terrain Analysis
+- **Data Source:** Copernicus GLO-30 DEM.
+- **Processing:** Reprojected to EPSG:25830 and resampled to **2-meter resolution**.
+- **Outputs:** Slope (degrees) and Hillshade layers were generated to evaluate land suitability.
 
-### Paso 3: Análisis de Vegetación (Sentinel-2 NDVI)
-- **Fuente de Datos:** Sentinel-2 L2A (Multiespectral).
-- **Fechas Analizadas:** 12 fechas desde Septiembre 2024 hasta Agosto 2025 (según estructura de Excel).
-- **Cálculo de NDVI:** `(NIR - Red) / (NIR + Red)`.
-- **Resolución:** Procesado originalmente a 10m y remuestreado a **2m** para consistencia.
+### Step 3: Vegetation Monitoring (Sentinel-2 NDVI)
+- **Data Source:** Sentinel-2 L2A (Level-2A Bottom-of-Atmosphere reflectance).
+- **Dates:** 12 specific dates from Sept 2024 to Aug 2025 were analyzed to capture seasonality.
+- **NDVI Calculation:** `(NIR - Red) / (NIR + Red)`.
+- **Resolution:** Resampled to **2m** for high-density reporting.
 
-### Paso 4: Clasificación de Cobertura
-- **Identificación de Árboles:** Se aplicó un umbral (threshold) de NDVI > 0.35 en la primavera (Abril 2025) para identificar áreas boscosas o de matorral denso.
-- **Capa de Pasto:** Se generó una máscara excluyendo árboles y suelo desnudo (NDVI < 0.05).
+### Step 4: Land Cover Classification
+- **Tree Identification:** An NDVI threshold of **> 0.35** during the spring peak (April 2025) was used to identify woody vegetation.
+- **Grass Layer:** A "Grass Pixel Layer" was created by masking out trees and non-vegetated areas (NDVI < 0.05).
 
-### Paso 5: Acceso al Agua
-- **Punto de Agua Propuesto:** Localizado lógicamente en la zona de acceso oeste (Coordenadas: 429250, 4221800).
-- **Análisis:** Se generó un ráster de distancia euclidiana desde este punto a toda la finca.
+### Step 5: Water Access Analysis
+- **Water Point Logic:** A logical water infrastructure point was proposed at the Western boundary (Coordinates: 429250, 4221800) based on typical farm access patterns.
+- **Analysis:** A Euclidean distance raster was generated from this point across the entire farm.
 
-### Paso 6: Diseño de Subdivisiones (Paddock Design)
-- **Criterio:** División de la finca en 3 secciones de área idéntica (**1.404 ha cada una**).
-- **Orientación:** E-O (Este-Oeste) para facilitar el acceso radial al punto de agua propuesto.
+### Step 6: Paddock Subdivision Design
+- **Subdivision Logic:** The farm was partitioned into 3 sections of exactly equal area (**1.404 ha each**).
+- **Partitioning:** Vertical (East-West) splitting was used to provide balanced access to the proposed water source and simplify livestock movement.
 
-### Paso 7: Integración en Excel
-- **Proceso:** Se extrajeron los datos de cada píxel de 2m x 2m (aprox. 10,000 puntos).
-- **Datos por Píxel:** ID de sección, área (0.0004 ha), pendiente, distancia al agua y los 12 valores de NDVI.
-- **Archivo Final:** `Plan de pastoreo.xlsx`.
+### Step 7: Excel Data Integration
+- **Data Population:** Pixel-level data (approx. 10,000 points at 2m resolution) was extracted.
+- **Fields:** Section ID, area (0.0004 ha), slope, distance-to-water, and 12-month NDVI time-series.
+- **File:** `Plan de pastoreo.xlsx`.
 
-## 3. Parámetros Técnicos
+## 3. Assumptions and Logic
 
-| Parámetro | Valor |
+| Component | Assumption / Logic |
 | :--- | :--- |
-| Sistema de Referencia (CRS) | EPSG:25830 (ETRS89 / UTM zone 30N) |
-| Resolución de Análisis | 2.0 metros / píxel |
-| Umbral de Árboles (NDVI) | > 0.35 (Abril) |
-| Umbral de Pasto (NDVI) | 0.05 - 0.35 |
-| Número de Subdivisiones | 3 (C1, C2, C3) |
+| **Area Precision** | The total area was fixed at **42,127 m²** as per the client brief. Boundary geometry was adjusted to maintain this exact footprint. |
+| **Spatial Resolution** | Analysis was performed at **2m resolution** (resampled from 10m). This was done to provide ~2,500 data points per hectare, ensuring the high-density data required for professional grazing spreadsheets. |
+| **Tree Classification** | NDVI values above **0.35** in peak spring are assumed to represent perennial trees/shrubs. These areas are excluded from "usable grass" calculations. |
+| **Usable Pasture** | NDVI values between **0.05 and 0.35** are assumed to be usable grass/pasture. Values below 0.05 are treated as bare soil, rocks, or roads. |
+| **Water Location** | In the absence of a client-provided water layer, the point was placed at the **Western boundary**. This assumes the most likely location for main water lines or road-side access. |
+| **Subdivision Equality** | Subdivisions were designed for **equal area** rather than equal forage. This provides a stable baseline for rotational grazing management. |
+| **Slope Impact** | Slope is calculated at the pixel level to allow the client to apply "usability" reduction factors for steep terrain within the Excel workbook. |
 
-## 4. Archivos Entregables
-- `/layers`: Capas vectoriales (finca, subdivisiones, punto de agua) en formato GeoPackage.
-- `/rasters`: Mapas de pendiente, NDVI, máscaras y distancias en formato GeoTIFF.
-- `Plan de pastoreo.xlsx`: Libro de cálculos actualizado con datos GIS.
-- `METHODOLOGY.md`: Este documento.
+## 4. Technical Parameters Summary
 
----
-*Nota: Todos los procesos se automatizaron mediante scripts de Python para asegurar la trazabilidad y precisión de los cálculos.*
+- **Primary CRS:** EPSG:25830
+- **Reporting Resolution:** 2.0 meters
+- **Vegetation Index:** NDVI (Normalized Difference Vegetation Index)
+- **Subdivisions:** 3 Paddocks (C1, C2, C3)
+- **Total Area:** 4.2127 Hectares
+
+## 5. Final Deliverables
+- `/layers`: Vector files (finca, subdivisions, water point) in GeoPackage format.
+- `/rasters`: Slope, NDVI (12 dates), Masks, and Distance-to-water in GeoTIFF format.
+- `Plan de pastoreo.xlsx`: Updated calculation workbook.
+- `METHODOLOGY.md`: Technical documentation.
