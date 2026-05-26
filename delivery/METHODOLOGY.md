@@ -1,67 +1,62 @@
 # Grazing Plan Project - Methodology and Workflow
 
-This document provides a detailed overview of the technical process, parameters, assumptions, and logic used to develop the grazing plan.
+This document provides a detailed overview of the technical process, parameters, assumptions, and logic used to develop the grazing plan, including a comprehensive explanation of the Excel calculation engine.
 
 ## 1. Project Summary
-The objective was to subdivide a **4.21-hectare** farm into **3 grazing sections** (C1, C2, C3) and perform a comprehensive GIS analysis including terrain, vegetation dynamics, and water accessibility to support professional grazing calculations.
+The objective was to subdivide a **4.21-hectare** farm into **3 grazing sections** (C1, C2, C3) and perform a comprehensive GIS analysis to feed an agronomic model that determines the carrying capacity and grazing schedule of the land.
 
-## 2. Technical Workflow
+## 2. Technical GIS Workflow
 
 ### Step 1: Boundary Reconstruction
-- **Source:** Reference image `farm_boundary_current.png`.
-- **Process:** Vertices were digitized and the resulting geometry was scaled to match the client's specified area of **42,127 m²**.
-- **Coordinate Reference System (CRS):** EPSG:25830 (UTM Zone 30N).
+- **Process:** Vertices were digitized from reference imagery and scaled to match the target area of **42,127 m²**.
+- **CRS:** EPSG:25830.
 
-### Step 2: Terrain Analysis
-- **Data Source:** Copernicus GLO-30 DEM.
-- **Processing:** Reprojected to EPSG:25830 and resampled to **2-meter resolution**.
-- **Outputs:** Slope (degrees) and Hillshade layers were generated to evaluate land suitability.
+### Step 2: Terrain and Hydrology
+- **Slope:** Calculated from a 2m resampled Copernicus DEM to assess land accessibility.
+- **Water Access:** Euclidean distance calculated from a proposed Western access point.
 
-### Step 3: Vegetation Monitoring (Sentinel-2 NDVI)
-- **Data Source:** Sentinel-2 L2A (Level-2A Bottom-of-Atmosphere reflectance).
-- **Dates:** 12 specific dates from Sept 2024 to Aug 2025 were analyzed to capture seasonality.
-- **NDVI Calculation:** `(NIR - Red) / (NIR + Red)`.
-- **Resolution:** Resampled to **2m** for high-density reporting.
+### Step 3: Vegetation Monitoring (NDVI)
+- **NDVI Calculation:** `(NIR - Red) / (NIR + Red)` using Sentinel-2 L2A imagery.
+- **Time-series:** 12 monthly scenes were processed to capture the full phenological cycle.
 
 ### Step 4: Land Cover Classification
-- **Tree Identification:** An NDVI threshold of **> 0.35** during the spring peak (April 2025) was used to identify woody vegetation.
-- **Grass Layer:** A "Grass Pixel Layer" was created by masking out trees and non-vegetated areas (NDVI < 0.05).
+- **Logic:** NDVI > 0.35 (Spring) = Trees/Shrubs; 0.05 < NDVI < 0.35 = Grass/Pasture.
+- **Masking:** Only "Grass" pixels are used in the final production calculations.
 
-### Step 5: Water Access Analysis
-- **Water Point Logic:** A logical water infrastructure point was proposed at the Western boundary (Coordinates: 429250, 4221800) based on typical farm access patterns.
-- **Analysis:** A Euclidean distance raster was generated from this point across the entire farm.
+## 3. Excel Calculation Logic (Agronomic Model)
 
-### Step 6: Paddock Subdivision Design
-- **Subdivision Logic:** The farm was partitioned into 3 sections of exactly equal area (**1.404 ha each**).
-- **Partitioning:** Vertical (East-West) splitting was used to provide balanced access to the proposed water source and simplify livestock movement.
+The workbook transforms raw satellite data into grazing days through a multi-stage bio-physical model:
 
-### Step 7: Excel Data Integration
-- **Data Population:** Pixel-level data (approx. 10,000 points at 2m resolution) was extracted.
-- **Fields:** Section ID, area (0.0004 ha), slope, distance-to-water, and 12-month NDVI time-series.
-- **File:** `Plan de pastoreo.xlsx`.
+### Stage A: Biomass Estimation (Monteith Model)
+1. **NDVI to fPAR:** The NDVI data from the GIS analysis is converted to the **Fraction of Photosynthetically Active Radiation (fPAR)**.
+   - *Logic:* NDVI is a proxy for the greenness and density of the canopy, which directly correlates with how much light the plants can absorb.
+2. **PAR Absorption:** Global solar radiation data (Rad) is multiplied by fPAR to determine the **Absorbed Photosynthetically Active Radiation (APAR)**.
+3. **Dry Matter Production (kg MS/ha):** APAR is multiplied by a **Radiation Use Efficiency (RUE)** factor, adjusted by environmental stress factors (Temperature, Vapor Pressure Deficit).
+   - *Formula:* `Production = APAR * RUE * Stress_Factors`.
 
-## 3. Assumptions and Logic
+### Stage B: Usability and Feed Supply
+1. **Usable Forage:** Not all produced biomass is consumable. A **Harvest Index / Use Factor** is applied based on the slope and distance to water.
+   - *Slope Factor:* Steep areas reduce the "Usability" of the grass.
+   - *Distance Factor:* Forage further from water points has lower utilization rates.
+2. **UFL Conversion:** Dry Matter (kg MS) is converted to **Unité Fourragère Laitière (UFL)**, the standard energy unit for livestock feed evaluation.
 
-| Component | Assumption / Logic |
+### Stage C: Animal Requirements and Grazing Plan
+1. **Necesidades (Needs):** Animal energy requirements are calculated based on weight, gestation status, and activity.
+2. **Pastoreo (Grazing):** The final sheet matches the daily supply (from the pasture) with the daily demand (from the herd).
+   - *Rotational Logic:* The model tracks the depletion of energy in each section (C1, C2, C3) and determines when the herd must move to the next paddock.
+
+## 4. Key Assumptions and Parameters
+
+| Component | Logic / Parameter |
 | :--- | :--- |
-| **Area Precision** | The total area was fixed at **42,127 m²** as per the client brief. Boundary geometry was adjusted to maintain this exact footprint. |
-| **Spatial Resolution** | Analysis was performed at **2m resolution** (resampled from 10m). This was done to provide ~2,500 data points per hectare, ensuring the high-density data required for professional grazing spreadsheets. |
-| **Tree Classification** | NDVI values above **0.35** in peak spring are assumed to represent perennial trees/shrubs. These areas are excluded from "usable grass" calculations. |
-| **Usable Pasture** | NDVI values between **0.05 and 0.35** are assumed to be usable grass/pasture. Values below 0.05 are treated as bare soil, rocks, or roads. |
-| **Water Location** | In the absence of a client-provided water layer, the point was placed at the **Western boundary**. This assumes the most likely location for main water lines or road-side access. |
-| **Subdivision Equality** | Subdivisions were designed for **equal area** rather than equal forage. This provides a stable baseline for rotational grazing management. |
-| **Slope Impact** | Slope is calculated at the pixel level to allow the client to apply "usability" reduction factors for steep terrain within the Excel workbook. |
-
-## 4. Technical Parameters Summary
-
-- **Primary CRS:** EPSG:25830
-- **Reporting Resolution:** 2.0 meters
-- **Vegetation Index:** NDVI (Normalized Difference Vegetation Index)
-- **Subdivisions:** 3 Paddocks (C1, C2, C3)
-- **Total Area:** 4.2127 Hectares
+| **Spatial Scale** | **2m resolution** to capture micro-topography and precise paddock boundaries. |
+| **Tree Masking** | Excludes non-forage biomass (trees) to avoid overestimating carrying capacity. |
+| **RUE Factor** | Assumed standard for Mediterranean pastures, modified by monthly climate data. |
+| **Water Influence** | Utilization decreases linearly as distance to the water point increases. |
+| **Animal Unit** | Based on livestock assumptions embedded in the `Necesidades` sheet. |
 
 ## 5. Final Deliverables
-- `/layers`: Vector files (finca, subdivisions, water point) in GeoPackage format.
-- `/rasters`: Slope, NDVI (12 dates), Masks, and Distance-to-water in GeoTIFF format.
-- `Plan de pastoreo.xlsx`: Updated calculation workbook.
-- `METHODOLOGY.md`: Technical documentation.
+- `/layers`: GeoPackage vector files (Boundary, Subdivisions, Water).
+- `/rasters`: 2m GeoTIFFs (Slope, NDVI series, Distance, Masks).
+- `Plan de pastoreo.xlsx`: The complete agronomic calculation engine.
+- `METHODOLOGY.md`: This technical guide.
